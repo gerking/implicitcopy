@@ -4,14 +4,17 @@ import org.muml.implicitcopy.qvto._library.ImplicitCopyBlackbox;
 
 modeltype ecore uses 'http://www.eclipse.org/emf/2002/Ecore';
 
+property root : EObject = null;
+property allObjects : Collection(Element) = OrderedSet{};
+
 helper Element::create(context : OclAny) : Element {
-	if(self.oclAsType(EObject).eResource().toString().matches("platform:/plugin")) {
-		return self.oclAsType(EObject);
+	if (allObjects->excludes(self)) {
+		return self;
 	};
-	
-	var eclass : ecore::EClass := self.oclAsType(EObject).eClass();
-	var factory : ecore::EFactory := eclass.ePackage.eFactoryInstance;
-	return factory.create(self.oclAsType(EObject).eClass());
+		
+	var eClass : ecore::EClass := self.oclAsType(EObject).eClass();
+	var factory : ecore::EFactory := eClass.ePackage.eFactoryInstance;
+	return factory.create(eClass);
 }
 
 query Element :: getValues(feature : EStructuralFeature) : Sequence(OclAny) {
@@ -28,35 +31,80 @@ query Element :: getValues(feature : EStructuralFeature) : Sequence(OclAny) {
 	return Sequence{};
 }
 
-mapping Element::transform() : Element {
+mapping Element :: transform() : Element {
 	init {
+		var selfEObject := self.oclAsType(EObject);
+	
+		if (root.oclIsUndefined()) {
+			registerRootElement(selfEObject);
+		};
+			
 		if (result.oclIsUndefined()) {
 			result := self.create(null);
 		}
 	}
-	var element := self.oclAsType(EObject);
-	element.eClass().eAllReferences->select(f | f.isValidFeature(result))->forEach(f) {
-		setValues(result.oclAsType(EObject), f, (element.getValues(f)[Element].map transform())[Element]);
+	
+	var eClass = selfEObject.eClass();
+	var resultEObject = result.oclAsType(EObject);
+	
+	eClass.eAllReferences->select(r | r.isValidFeature(resultEObject))->forEach(r) {
+		var sourceValues = self.getValues(r)[Element];
+		var targetValues = sourceValues.map transform()[Element];
+		setValues(resultEObject, r, targetValues);
 	};
-	element.eClass().eAllAttributes->select(f | f.isValidFeature(result))->forEach(f) {
-		setValues(result.oclAsType(EObject), f, element.getValues(f));
+		
+	eClass.eAllAttributes->select(a | a.isValidFeature(resultEObject))->forEach(a) {
+		var values = self.getValues(a);
+		setValues(resultEObject, a, values);
 	};
+	
+	if (root = self) {
+		unregisterRootElement();
+	}
 }
 
 
-mapping Element::transformWithContext(context : OclAny) : Element {
+mapping Element :: transformWithContext(context : OclAny) : Element {
 	init {
+		var selfEObject := self.oclAsType(EObject);
+	
+		if (root.oclIsUndefined()) {
+			registerRootElement(selfEObject);
+		};
+			
 		if (result.oclIsUndefined()) {
 			result := self.create(context);
 		}
 	}
-	var element := self.oclAsType(EObject);
-	element.eClass().eAllReferences->select(f | f.isValidFeature(result))->forEach(f) {
-		setValues(result.oclAsType(EObject), f, element.getValues(f)[Element].map transformWithContext(context)[Element]);
+	
+	var eClass = selfEObject.eClass();
+	var resultEObject = result.oclAsType(EObject);
+	
+	eClass.eAllReferences->select(r | r.isValidFeature(resultEObject))->forEach(r) {
+		var sourceValues = self.getValues(r)[Element];
+		var targetValues = sourceValues.map transformWithContext(context)[Element];
+		setValues(resultEObject, r, targetValues);
 	};
-	element.eClass().eAllAttributes->select(f | f.isValidFeature(result))->forEach(f) {
-		setValues(result.oclAsType(EObject), f, element.getValues(f));
+		
+	eClass.eAllAttributes->select(a | a.isValidFeature(resultEObject))->forEach(a) {
+		var values = self.getValues(a);
+		setValues(resultEObject, a, values);
 	};
+	
+	if (root = self) {
+		unregisterRootElement();
+	}
+}
+
+helper registerRootElement(eObject : EObject) {
+	root := eObject;
+	allObjects += root;
+	allObjects += root.allSubobjects();
+}
+
+helper unregisterRootElement() {
+	root := null;
+	allObjects := OrderedSet{};
 }
 
 query EStructuralFeature :: isValidFeature(target : EObject) : Boolean {

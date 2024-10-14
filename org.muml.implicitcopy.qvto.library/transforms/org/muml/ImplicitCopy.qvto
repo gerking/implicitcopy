@@ -59,6 +59,9 @@ mapping Element::transformWithContext(context : OclAny) : Element {
 	};
 }
 
-query EStructuralFeature::isValidFeature(target : Element) : Boolean {
-	return self.changeable and not self._derived and target.oclAsType(EObject).eClass().eAllStructuralFeatures->includes(self);
+query EStructuralFeature :: isValidFeature(target : EObject) : Boolean {
+	return self.changeable 
+		and not self._derived 
+		and not self.transient 
+		and target.eClass().eAllStructuralFeatures->includes(self);
 }

@@ -1,4 +1,4 @@
-package org.muml.ImplicitCopy.qvto.library;
+package de.fraunhofer.iem.implicitcopy;
 
 import java.util.List;
 

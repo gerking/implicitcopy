@@ -110,6 +110,6 @@ helper unsetRootElement() {
 query EStructuralFeature :: isValidFeature(target : EObject) : Boolean {
 	return self.changeable 
 		and not self._derived 
-		and not self.transient 
+		and not target.eIsSet(self)
 		and target.eClass().eAllStructuralFeatures->includes(self);
 }
